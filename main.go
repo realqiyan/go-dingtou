@@ -7,8 +7,6 @@ import (
 	dmodel "dingtou/model"
 
 	"github.com/joho/godotenv"
-
-	"encoding/json"
 )
 
 func main() {
@@ -30,8 +28,14 @@ func main() {
 	stocks, err = dmodel.GetOwnerStocks("weibo_2685310785")
 	if err == nil {
 		for _, stock := range stocks {
-			bytes, _ := json.MarshalIndent(stock.GetTradeCfg(), "", "\t")
-			log.Printf("Code:%s,Name:%s,TradeCfg:%s", stock.Code, stock.Name, string(bytes))
+			orders, _ := stock.GetStockOrders()
+			log.Printf("Code:%s,Name:%s,orders:%v", stock.Code, stock.Name, len(orders))
+
+			for _, order := range orders {
+				snapshot := order.GetSnapshot()
+				log.Printf("orderId:%s,orders:%v,currentTargetValue:%v", order.OutId, snapshot.BuyOrderOutIds, snapshot.TradeCfg.Attributes.CurrentTargetValue)
+			}
+
 		}
 	}
 

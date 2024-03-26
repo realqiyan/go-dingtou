@@ -5,22 +5,26 @@ import (
 	"time"
 )
 
+// 交易配置
 type TradeCfg struct {
-	TradeStrategy  string  `json:"tradeStrategy"`
-	Increment      float64 `json:"increment"`
-	ServiceFeeRate float64 `json:"serviceFeeRate"`
-	MinServiceFee  float64 `json:"minServiceFee"`
-	MinTradeAmount float64 `json:"minTradeAmount"`
-	Attributes     struct {
-		PerMaxTradePrice            string `json:"perMaxTradePrice"`
-		CurrentTargetValue          string `json:"currentTargetValue"`
-		PreTargetValue              string `json:"preTargetValue"`
-		MaxTargetValue              string `json:"maxTargetValue"`
-		CurrentTradePrice           string `json:"currentTradePrice"`
-		TargetIndexCode             string `json:"targetIndexCode"`
-		CurrentTargetIndexValuation string `json:"currentTargetIndexValuation"`
-		CurrentIncrement            string `json:"currentIncrement"`
-	} `json:"attributes"`
+	TradeStrategy  string     `json:"tradeStrategy"`
+	Increment      float64    `json:"increment"`
+	ServiceFeeRate float64    `json:"serviceFeeRate"`
+	MinServiceFee  float64    `json:"minServiceFee"`
+	MinTradeAmount float64    `json:"minTradeAmount"`
+	Attributes     Attributes `json:"attributes"`
+}
+
+// 交易属性
+type Attributes struct {
+	PerMaxTradePrice            string `json:"perMaxTradePrice"`
+	CurrentTargetValue          string `json:"currentTargetValue"`
+	PreTargetValue              string `json:"preTargetValue"`
+	MaxTargetValue              string `json:"maxTargetValue"`
+	CurrentTradePrice           string `json:"currentTradePrice"`
+	TargetIndexCode             string `json:"targetIndexCode"`
+	CurrentTargetIndexValuation string `json:"currentTargetIndexValuation"`
+	CurrentIncrement            string `json:"currentIncrement"`
 }
 
 // Stock
@@ -61,4 +65,11 @@ func GetOwnerStocks(owner string) ([]Stock, error) {
 	var stocks []Stock
 	result := DB.Where("owner = ?", owner).Find(&stocks)
 	return stocks, result.Error
+}
+
+// 获取所以订单 （周定投一年52条记录，直接取全部订单）
+func (s *Stock) GetStockOrders() ([]StockOrder, error) {
+	var orders []StockOrder
+	result := DB.Where("stock_id = ?", s.ID).Find(&orders)
+	return orders, result.Error
 }

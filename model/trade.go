@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -17,7 +18,51 @@ type StockOrder struct {
 	TradeAmount     float64   `json:"trade_amount" gorm:"trade_amount"`           // 交易数量
 	TradeServiceFee float64   `json:"trade_service_fee" gorm:"trade_service_fee"` // 交易服务费
 	TradeStatus     string    `json:"trade_status" gorm:"trade_status"`           // 0:进行中 1:结算完成
-	Snapshot        string    `json:"snapshot" gorm:"snapshot"`                   // 交易快照
+	Snapshot        []byte    `json:"snapshot" gorm:"snapshot"`                   // 交易快照
+}
+
+// 订单快照
+type OrderSnapshot struct {
+	TradeCfg       TradeCfg `json:"tradeCfg"`       //交易配置快照
+	BuyOrderOutIds []string `json:"buyOrderOutIds"` //卖出依赖的订单
+}
+
+// 获取订单快照
+func (o *StockOrder) GetSnapshot() OrderSnapshot {
+	var orderSnapshot OrderSnapshot
+	if len(o.Snapshot) == 0 {
+		return orderSnapshot
+	}
+
+	var snapshotMap map[string]string = make(map[string]string)
+	err := json.Unmarshal(o.Snapshot, &snapshotMap)
+	if err != nil {
+		panic(err)
+	}
+
+	// 交易快照
+	tradeCfgStr, exist := snapshotMap["tradeCfg"]
+	if exist {
+		var tradeCfg TradeCfg
+		err := json.Unmarshal([]byte(tradeCfgStr), &tradeCfg)
+		if err != nil {
+			panic(err)
+		}
+		orderSnapshot.TradeCfg = tradeCfg
+	}
+
+	// 依赖的订单唯一ID
+	buyOrderOutIdsStr, exist := snapshotMap["buyOrderOutIds"]
+	if exist {
+		var buyOrderOutIds []string
+		err := json.Unmarshal([]byte(buyOrderOutIdsStr), &buyOrderOutIds)
+		if err != nil {
+			panic(err)
+		}
+		orderSnapshot.BuyOrderOutIds = buyOrderOutIds
+	}
+
+	return orderSnapshot
 }
 
 // TableName 表名称
