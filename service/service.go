@@ -1,13 +1,13 @@
 package service
 
-import dmodel "dingtou/model"
+import "dingtou/domain"
 
 type StockService interface {
 
 	/**
 	 * 查询证券
 	 */
-	Query(owner string) []dmodel.Stock
+	Query(owner string) []domain.Stock
 }
 
 type TradeService interface {
@@ -15,10 +15,10 @@ type TradeService interface {
 	/**
 	 * 计算股票基金购买金额
 	 */
-	conform(owner string) []dmodel.StockOrder
+	conform(owner string) []domain.StockOrder
 
 	/**
 	 * 购买股票基金
 	 */
-	buy(order dmodel.StockOrder) dmodel.StockOrder
+	buy(order domain.StockOrder) domain.StockOrder
 }
