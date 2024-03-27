@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"dingtou/config"
 	"encoding/json"
 	"time"
 )
@@ -63,13 +64,13 @@ func (s *Stock) GetTradeCfg() TradeCfg {
 // GetOwnerStocks 获取owner的证券
 func GetOwnerStocks(owner string) ([]Stock, error) {
 	var stocks []Stock
-	result := DB.Where("owner = ?", owner).Find(&stocks)
+	result := config.DB.Where("owner = ?", owner).Find(&stocks)
 	return stocks, result.Error
 }
 
 // 获取所以订单 （周定投一年52条记录，直接取全部订单）
 func (s *Stock) GetStockOrders() ([]StockOrder, error) {
 	var orders []StockOrder
-	result := DB.Where("stock_id = ?", s.ID).Find(&orders)
+	result := config.DB.Where("stock_id = ?", s.ID).Find(&orders)
 	return orders, result.Error
 }
