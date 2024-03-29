@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"dingtou/config"
 	"dingtou/domain"
@@ -43,6 +44,10 @@ func main() {
 		pricePull := domain.BuildPricePull(&lastStock)
 		price := pricePull.CurrentPrice()
 		log.Printf("pricePull:%T,value:%v", price, price)
+
+		t, _ := time.Parse("2006-01-02", "2024-03-21")
+		log.Printf("Parse:%v", t)
+		pricePull.ListPrice(t, 5)
 	}
 
 }
