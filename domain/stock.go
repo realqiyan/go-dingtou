@@ -3,6 +3,7 @@ package domain
 import (
 	"dingtou/config"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -73,4 +74,37 @@ func (s *Stock) GetStockOrders() ([]StockOrder, error) {
 	var orders []StockOrder
 	result := config.DB.Where("stock_id = ?", s.ID).Find(&orders)
 	return orders, result.Error
+}
+
+// 生成订单
+func (s *Stock) Conform() (StockOrder, error) {
+	var order StockOrder
+	now := time.Now()
+	order.Code = s.Code
+	order.TradeStatus = "processing"
+	order.CreateTime = now
+
+	historyOrders, _ := s.GetStockOrders()
+	tradeDetail := CalculateConform(s, historyOrders, now)
+
+	order.TradeAmount = tradeDetail.TradeAmount
+	order.TradeFee = tradeDetail.TradeFee
+	order.TradeServiceFee = tradeDetail.TradeServiceFee
+	order.TradeTime = now
+
+	var tradeType string
+	if tradeDetail.TradeFee >= 0 {
+		tradeType = "buy"
+	} else {
+		tradeType = "sell"
+	}
+	order.Type = tradeType
+	order.OutId = buildOutId(tradeType, now, s)
+
+	return order, nil
+}
+
+func buildOutId(prefix string, now time.Time, s *Stock) string {
+	str := now.Format("20060102")
+	return fmt.Sprintf("%s_%s%s_%s", prefix, s.Market, s.Code, str)
 }

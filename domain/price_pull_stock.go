@@ -1,12 +1,14 @@
 package domain
 
 import (
+	"dingtou/util"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -27,9 +29,29 @@ type originalStockPrice struct {
 }
 
 type originalStockAdjustResult struct {
-	Total int                       `json:"total"`
-	Data  []originalStockAdjustItem `json:"data"`
+	Total int                  `json:"total"`
+	Data  stockAdjustItemSlice `json:"data"`
 }
+
+type stockAdjustItemSlice []originalStockAdjustItem
+
+// Len is the number of elements in the collection.
+func (s stockAdjustItemSlice) Len() int {
+	return len(s)
+}
+
+// Less reports whether the element with index i
+// must sort before the element with index j.
+func (s stockAdjustItemSlice) Less(i, j int) bool {
+	// 近期排前 历史排后
+	return s[i].AdjustDate.After(s[j].AdjustDate)
+}
+
+// Swap swaps the elements with indexes i and j.
+func (s stockAdjustItemSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
 type originalStockAdjustItem struct {
 	/**
 	 * 复权日期
@@ -71,7 +93,11 @@ func (s StockPricePull) CurrentPrice() float64 {
 
 // GetSettlementPrice implements PricePull.
 func (s StockPricePull) GetSettlementPrice(date time.Time) float64 {
-	panic("unimplemented")
+	stockPrices := s.ListPrice(date, 1)
+	if len(stockPrices) >= 1 {
+		return stockPrices[0].Price
+	}
+	return 0
 }
 
 // ListPrice implements PricePull.
@@ -88,6 +114,19 @@ func (s StockPricePull) ListPrice(date time.Time, x int16) []StockPrice {
 	_ = json.Unmarshal(bodyByte, &stockPriceArr)
 	log.Printf("%s", stockPriceArr)
 
+	layout := "2006-01-02"
+	size := len(stockPriceArr)
+	stockPriceSlice := make([]StockPrice, size)
+	for i := size - 1; i >= 0; i-- {
+		var stockPrice StockPrice
+		stockPrice.Stock = s.Stock
+		d, _ := time.Parse(layout, stockPriceArr[i].Day)
+		stockPrice.Date = d
+		f, _ := strconv.ParseFloat(stockPriceArr[i].Close, 64)
+		stockPrice.Price = f
+		stockPriceSlice[i] = stockPrice
+	}
+
 	//前复权:https://finance.sina.com.cn/realstock/company/sz000002/qfq.js
 	adjustUrlTemplate := "https://finance.sina.com.cn/realstock/company/%s%s/qfq.js"
 	pullAdjustUrl := fmt.Sprintf(adjustUrlTemplate, s.Stock.Market, s.Stock.Code)
@@ -99,28 +138,38 @@ func (s StockPricePull) ListPrice(date time.Time, x int16) []StockPrice {
 		var adjustResult originalStockAdjustResult
 		_ = json.Unmarshal(reg.FindAll(stockAdjust, 1)[0], &adjustResult)
 
-		layout := "2006-01-02"
-		for _, adjustData := range adjustResult.Data {
-			log.Printf("adjustData:%v,AdjustVal:%v", adjustData.AdjustDateStr, adjustData.AdjustValStr)
-			d, _ := time.Parse(layout, adjustData.AdjustDateStr)
-			adjustData.AdjustDate = d
+		for i := len(adjustResult.Data) - 1; i >= 0; i-- {
+			//log.Printf("adjustDataStr:%s,AdjustValStr:%s", adjustData.AdjustDateStr, adjustData.AdjustValStr)
+			d, _ := time.Parse(layout, adjustResult.Data[i].AdjustDateStr)
+			adjustResult.Data[i].AdjustDate = d
 
-			f, _ := strconv.ParseFloat(adjustData.AdjustValStr, 64)
-			adjustData.AdjustVal = f
-			log.Printf("adjustData:%v,AdjustVal:%v", adjustData.AdjustDate, adjustData.AdjustVal)
+			f, _ := strconv.ParseFloat(adjustResult.Data[i].AdjustValStr, 64)
+			adjustResult.Data[i].AdjustVal = f
+			//log.Printf("adjustData:%v,AdjustVal:%v", adjustResult.Data[i].AdjustDate, adjustResult.Data[i].AdjustVal)
 		}
 
-		// var stockAdjustArr []originalStockAdjust
-		// data, _ := json.Marshal(adjustMap["data"])
+		// 近期排前 历史排后
+		sort.Sort(adjustResult.Data)
+		log.Printf("after sort adjustData:%v", adjustResult.Data)
 
-		// log.Printf("data:%v", string(data))
+		// 计算复权价格
+		for i := size - 1; i >= 0; i-- {
+			calcRehabPrice(&stockPriceSlice[i], adjustResult.Data)
+		}
 
-		// _ = json.Unmarshal(data, &stockAdjustArr)
-
-		// log.Printf("%v", stockAdjustArr)
 	}
 
-	panic("unimplemented")
+	return stockPriceSlice
+
+}
+
+func calcRehabPrice(stockPrice *StockPrice, stockAdjustItemSlice stockAdjustItemSlice) {
+	for _, adjust := range stockAdjustItemSlice {
+		if stockPrice.Date.After(adjust.AdjustDate) || stockPrice.Date.Equal(adjust.AdjustDate) {
+			stockPrice.RehabPrice = util.FloatDiv(stockPrice.Price, adjust.AdjustVal)
+			return
+		}
+	}
 }
 
 func getContent(url string) []byte {
