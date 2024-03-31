@@ -44,12 +44,11 @@ func TestStockService_Query(t *testing.T) {
 			}
 		}
 
-		pricePull := domain.BuildPricePull(&lastStock)
-		price := pricePull.CurrentPrice()
+		price := lastStock.CurrentPrice()
 		t.Logf("pricePull:%T,value:%v", price, price)
 
 		d, _ := time.Parse("2006-01-02", "2024-03-21")
-		stockPriceSlice := pricePull.ListPrice(d, 5)
+		stockPriceSlice := lastStock.ListPrice(d, 5)
 		t.Logf("stockPriceSlice:%v", stockPriceSlice)
 	} else {
 		t.Errorf("StockService.Query() error = %v", err)

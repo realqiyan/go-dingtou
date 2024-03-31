@@ -14,11 +14,6 @@ import (
 	"time"
 )
 
-// 价格拉取策略
-type StockPricePull struct {
-	Stock *Stock
-}
-
 type originalStockPrice struct {
 	Day    string `json:"day"`
 	Open   string `json:"open"`
@@ -66,9 +61,9 @@ type originalStockAdjustItem struct {
 }
 
 // CurrentPrice implements PricePull.
-func (s StockPricePull) CurrentPrice() float64 {
+func (s *Stock) CurrentPrice() float64 {
 	var url = "http://qt.gtimg.cn/q=%s%s"
-	var target_url = fmt.Sprintf(url, s.Stock.Market, s.Stock.Code)
+	var target_url = fmt.Sprintf(url, s.Market, s.Code)
 	log.Printf("%s", target_url)
 	resp, err := http.Get(target_url)
 	if err != nil {
@@ -92,7 +87,7 @@ func (s StockPricePull) CurrentPrice() float64 {
 }
 
 // GetSettlementPrice implements PricePull.
-func (s StockPricePull) GetSettlementPrice(date time.Time) float64 {
+func (s *Stock) GetSettlementPrice(date time.Time) float64 {
 	stockPrices := s.ListPrice(date, 1)
 	if len(stockPrices) >= 1 {
 		return stockPrices[0].Price
@@ -101,14 +96,14 @@ func (s StockPricePull) GetSettlementPrice(date time.Time) float64 {
 }
 
 // ListPrice implements PricePull.
-func (s StockPricePull) ListPrice(date time.Time, x int16) []StockPrice {
+func (s *Stock) ListPrice(date time.Time, x int16) []StockPrice {
 	now := time.Now()
 	between := int16(now.Sub(date).Abs().Hours() / 24)
 	datalen := between + x
 
 	//日K:https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData?symbol=sz000002&scale=240&ma=no&datalen=30
 	priceUrlTemplate := "https://quotes.sina.cn/cn/api/json_v2.php/CN_MarketDataService.getKLineData?symbol=%s%s&scale=240&ma=no&datalen=%d"
-	pullPriceUrl := fmt.Sprintf(priceUrlTemplate, s.Stock.Market, s.Stock.Code, datalen)
+	pullPriceUrl := fmt.Sprintf(priceUrlTemplate, s.Market, s.Code, datalen)
 	bodyByte := getContent(pullPriceUrl)
 	var stockPriceArr []originalStockPrice
 	_ = json.Unmarshal(bodyByte, &stockPriceArr)
@@ -119,7 +114,7 @@ func (s StockPricePull) ListPrice(date time.Time, x int16) []StockPrice {
 	stockPriceSlice := make([]StockPrice, size)
 	for i := size - 1; i >= 0; i-- {
 		var stockPrice StockPrice
-		stockPrice.Stock = s.Stock
+		stockPrice.Stock = s
 		d, _ := time.Parse(layout, stockPriceArr[i].Day)
 		stockPrice.Date = d
 		f, _ := strconv.ParseFloat(stockPriceArr[i].Close, 64)
@@ -129,7 +124,7 @@ func (s StockPricePull) ListPrice(date time.Time, x int16) []StockPrice {
 
 	//前复权:https://finance.sina.com.cn/realstock/company/sz000002/qfq.js
 	adjustUrlTemplate := "https://finance.sina.com.cn/realstock/company/%s%s/qfq.js"
-	pullAdjustUrl := fmt.Sprintf(adjustUrlTemplate, s.Stock.Market, s.Stock.Code)
+	pullAdjustUrl := fmt.Sprintf(adjustUrlTemplate, s.Market, s.Code)
 	stockAdjust := getContent(pullAdjustUrl)
 	log.Printf("%s", stockAdjust)
 

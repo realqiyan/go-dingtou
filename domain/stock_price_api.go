@@ -5,7 +5,7 @@ import (
 )
 
 // 价格拉取策略
-type PricePull interface {
+type PriceAPI interface {
 
 	/**
 	 * 获取当前金额
@@ -30,21 +30,4 @@ type PricePull interface {
 	 * @return 结算金额
 	 */
 	GetSettlementPrice(date time.Time) float64
-}
-
-// 构建价格拉取服务
-func BuildPricePull(stock *Stock) PricePull {
-	var pricePull PricePull
-	if stock.Type == "stock" {
-		var stockPricePull StockPricePull
-		stockPricePull.Stock = stock
-		pricePull = stockPricePull
-	} else if stock.Type == "fund" {
-		var fundPricePull FundPricePull
-		fundPricePull.Stock = stock
-		pricePull = fundPricePull
-	} else {
-		panic(stock.Type + " is not support")
-	}
-	return pricePull
 }
