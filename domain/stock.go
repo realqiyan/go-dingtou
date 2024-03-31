@@ -47,6 +47,29 @@ type Stock struct {
 	Status        int64     `json:"status" gorm:"status"`             // 状态 0失效 1有效
 }
 
+// StockPrice
+type StockPrice struct {
+	/**
+	 * 股票基金
+	 */
+	Stock *Stock
+
+	/**
+	 * 日期
+	 */
+	Date time.Time
+
+	/**
+	 * 价格
+	 */
+	Price float64
+
+	/**
+	 * 复权价格
+	 */
+	RehabPrice float64
+}
+
 // TableName 表名称
 func (*Stock) TableName() string {
 	return "stock"
@@ -100,6 +123,8 @@ func (s *Stock) Conform() (StockOrder, error) {
 	}
 	order.Type = tradeType
 	order.OutId = buildOutId(tradeType, now, s)
+
+	//TODO 快照
 
 	return order, nil
 }
