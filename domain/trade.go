@@ -21,6 +21,31 @@ type StockOrder struct {
 	Snapshot        []byte    `json:"snapshot" gorm:"snapshot"`                   // 交易快照
 }
 
+// TradeDetail
+type TradeDetail struct {
+	/**
+	 * 目标金额
+	 */
+	targetValue float64
+	/**
+	 * 交易金额
+	 */
+	TradeFee float64
+	/**
+	 * 交易份额
+	 */
+	TradeAmount float64
+	/**
+	 * 交易手续费
+	 */
+	TradeServiceFee float64
+
+	/**
+	 * 卖出的订单
+	 */
+	SellOrders []StockOrder
+}
+
 // 订单快照
 type OrderSnapshot struct {
 	TradeCfg       TradeCfg `json:"tradeCfg"`       //交易配置快照
