@@ -44,7 +44,7 @@ func TestStockService_Query(t *testing.T) {
 			}
 		}
 
-		price := lastStock.CurrentPrice()
+		price := lastStock.GetCurrentPrice()
 		t.Logf("pricePull:%T,value:%v", price, price)
 
 		d, _ := time.Parse("2006-01-02", "2024-03-21")

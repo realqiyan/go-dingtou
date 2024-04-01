@@ -1,17 +1,25 @@
 package util
 
 import (
-	"log"
+	//"log"
 
 	"github.com/shopspring/decimal"
 )
+
+// abs
+func FloatAbs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
 
 // x * y
 func FloatMul(x, y float64) float64 {
 	bx, by := convert(x, y)
 	result := bx.Mul(by)
-	floatRet, accuracy := result.Float64()
-	log.Printf("%v * %v = %v , %v", bx, by, floatRet, accuracy)
+	floatRet, _ := result.Float64()
+	// log.Printf("%v * %v = %v , %v", bx, by, floatRet, accuracy)
 	return floatRet
 }
 
@@ -19,8 +27,8 @@ func FloatMul(x, y float64) float64 {
 func FloatDiv(x, y float64) float64 {
 	bx, by := convert(x, y)
 	result := bx.DivRound(by, 6)
-	floatRet, accuracy := result.Float64()
-	log.Printf("%v / %v = %v , %v", bx, by, floatRet, accuracy)
+	floatRet, _ := result.Float64()
+	// log.Printf("%v / %v = %v , %v", bx, by, floatRet, accuracy)
 	return floatRet
 }
 
@@ -28,8 +36,8 @@ func FloatDiv(x, y float64) float64 {
 func FloatAdd(x, y float64) float64 {
 	bx, by := convert(x, y)
 	result := bx.Add(by)
-	floatRet, accuracy := result.Float64()
-	log.Printf("%v + %v = %v , %v", bx, by, floatRet, accuracy)
+	floatRet, _ := result.Float64()
+	// log.Printf("%v + %v = %v , %v", bx, by, floatRet, accuracy)
 	return floatRet
 }
 
@@ -37,8 +45,8 @@ func FloatAdd(x, y float64) float64 {
 func FloatSub(x, y float64) float64 {
 	bx, by := convert(x, y)
 	result := bx.Sub(by)
-	floatRet, accuracy := result.Float64()
-	log.Printf("%v - %v = %v , %v", bx, by, floatRet, accuracy)
+	floatRet, _ := result.Float64()
+	// log.Printf("%v - %v = %v , %v", bx, by, floatRet, accuracy)
 	return floatRet
 }
 
