@@ -12,7 +12,7 @@ type PriceAPI interface {
 	 *
 	 * @return 当前金额
 	 */
-	CurrentPrice() float64
+	GetCurrentPrice() float64
 
 	/**
 	 * 价格列表
@@ -30,4 +30,11 @@ type PriceAPI interface {
 	 * @return 结算金额
 	 */
 	GetSettlementPrice(date time.Time) float64
+
+	/**
+	 * 获取指数估值比例
+	 *
+	 * @return 指数估值比例
+	 */
+	GetIndexValuationRatio() float64
 }

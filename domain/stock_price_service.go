@@ -14,6 +14,25 @@ import (
 	"time"
 )
 
+type indexValuation struct {
+	Data struct {
+		IndexCode    string  `json:"index_code"`
+		Name         string  `json:"name"`
+		Pe           float64 `json:"pe"`
+		Pb           float64 `json:"pb"`
+		PePercentile float64 `json:"pe_percentile"`
+		PbPercentile float64 `json:"pb_percentile"`
+		Roe          float64 `json:"roe"`
+		Yeild        float64 `json:"yeild"`
+		EvaType      string  `json:"eva_type"`
+		EvaTypeInt   int     `json:"eva_type_int"`
+		BondYeild    float64 `json:"bond_yeild"`
+		Peg          float64 `json:"peg"`
+		Date         string  `json:"date"`
+	} `json:"data"`
+	ResultCode int `json:"result_code"`
+}
+
 type originalStockPrice struct {
 	Day    string `json:"day"`
 	Open   string `json:"open"`
@@ -60,8 +79,8 @@ type originalStockAdjustItem struct {
 	AdjustVal    float64
 }
 
-// CurrentPrice implements PricePull.
-func (s *Stock) CurrentPrice() float64 {
+// GetCurrentPrice implements PriceAPI.
+func (s *Stock) GetCurrentPrice() float64 {
 	var url = "http://qt.gtimg.cn/q=%s%s"
 	var target_url = fmt.Sprintf(url, s.Market, s.Code)
 	log.Printf("%s", target_url)
@@ -86,7 +105,7 @@ func (s *Stock) CurrentPrice() float64 {
 	return ret
 }
 
-// GetSettlementPrice implements PricePull.
+// GetSettlementPrice implements PriceAPI.
 func (s *Stock) GetSettlementPrice(date time.Time) float64 {
 	stockPrices := s.ListPrice(date, 1)
 	if len(stockPrices) >= 1 {
@@ -95,7 +114,7 @@ func (s *Stock) GetSettlementPrice(date time.Time) float64 {
 	return 0
 }
 
-// ListPrice implements PricePull.
+// ListPrice implements PriceAPI.
 func (s *Stock) ListPrice(date time.Time, x int16) []StockPrice {
 	now := time.Now()
 	between := int16(now.Sub(date).Abs().Hours() / 24)
@@ -156,6 +175,25 @@ func (s *Stock) ListPrice(date time.Time, x int16) []StockPrice {
 
 	return stockPriceSlice
 
+}
+
+// GetIndexValuationRatio implements PriceAPI.
+func (s *Stock) GetIndexValuationRatio() float64 {
+	targetIndexCode := s.GetTradeCfg().Attributes.TargetIndexCode
+	if targetIndexCode != "" {
+		template := "https://danjuanapp.com/djapi/index_eva/detail/%s"
+		url := fmt.Sprintf(template, targetIndexCode)
+		log.Printf("GetIndexValuationRatio url:%s", url)
+		bodyByte := getContent(url)
+
+		var indexValuation indexValuation
+		_ = json.Unmarshal(bodyByte, &indexValuation)
+		log.Printf("indexValuation:%v", indexValuation)
+		if indexValuation.ResultCode == 0 {
+			return indexValuation.Data.PePercentile
+		}
+	}
+	return 0
 }
 
 func calcRehabPrice(stockPrice *StockPrice, stockAdjustItemSlice stockAdjustItemSlice) {

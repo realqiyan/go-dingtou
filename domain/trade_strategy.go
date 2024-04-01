@@ -58,14 +58,14 @@ func CalculateConform(stock *Stock, orders []StockOrder, tradeDate time.Time) Tr
 	}
 
 	// 当前价格
-	currentPrice := stock.CurrentPrice()
+	currentPrice := stock.GetCurrentPrice()
 
 	// 冗余记录实时交易价格
 	attributes.CurrentTradePrice = fmt.Sprintf("%f", currentPrice)
 
 	//
 	// 计算步长 - 均线策略smaStrategyConfig
-	increment := calculateIncrement(stock, &tradeCfg, currentPrice, smaStrategyConfig)
+	increment := calculateIncrement(stock, &tradeCfg, attributes, currentPrice, smaStrategyConfig)
 
 	// 冗余记录步长
 	attributes.CurrentIncrement = fmt.Sprintf("%f", increment)
@@ -97,7 +97,7 @@ func CalculateConform(stock *Stock, orders []StockOrder, tradeDate time.Time) Tr
 	if attributes.PerMaxTradePrice != "" {
 		perMaxTradePrice, _ := strconv.ParseFloat(attributes.PerMaxTradePrice, 64)
 		if tradeFee > perMaxTradePrice {
-			log.Printf("stock:%s,perMaxTradePrice:%f,tradeFee:%f", stock.Code, perMaxTradePrice, tradeFee)
+			// log.Printf("stock:%s,perMaxTradePrice:%f,tradeFee:%f", stock.Code, perMaxTradePrice, tradeFee)
 			tradeFee = perMaxTradePrice
 		}
 	}
@@ -151,8 +151,8 @@ func contains(s []string, str string) bool {
 
 func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, currentPrice float64) TradeDetail {
 
-	selledOrderOutIds := make([]string, 32) //已经卖出的订单outId
-	canSellOrders := make([]StockOrder, 32) //可以卖出的订单
+	var selledOrderOutIds []string //已经卖出的订单outId
+	var canSellOrders []StockOrder //可以卖出的订单
 
 	// 需要过滤已经卖出的订单
 	for _, order := range orders {
@@ -162,113 +162,133 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 	}
 	log.Printf("selledOrderOutIds:%v", selledOrderOutIds)
 
-	//TODO 找出可以卖的订单
+	// 找出可以卖的订单
+	sellTotalFee := util.FloatAbs(tradeFee)
 	for _, order := range orders {
-		if order.Type == "buy" && !contains(selledOrderOutIds, order.OutId) {
-			canSellOrders = append(canSellOrders, order)
+		orderCurrentPrice := util.FloatMul(order.TradeAmount, currentPrice)
+		if order.Type == "buy" && !contains(selledOrderOutIds, order.OutId) && order.TradeStatus == "done" && order.TradeFee > 0 && orderCurrentPrice < sellTotalFee {
+			// 当前盈利
+			currentProfitFee := util.FloatSub(orderCurrentPrice, order.TradeFee)
+			currentProfitFee = util.FloatSub(currentProfitFee, order.TradeServiceFee)
+
+			// 当前盈利比例
+			currentProfitRatio := util.FloatDiv(currentProfitFee, order.TradeFee)
+
+			// 大于5%才卖
+			if currentProfitRatio >= 0.05 {
+				order.CurrentProfitFee = currentProfitFee
+				order.CurrentProfitRatio = currentProfitRatio
+				canSellOrders = append(canSellOrders, order)
+			}
 		}
 	}
-	log.Printf("canSellOrders:%v", canSellOrders)
+	//log.Printf("canSellOrders:%v", canSellOrders)
 
-	// // 需要过滤已经卖出的订单
-	// List<String> orderOutIds = stockOrders.stream()
-	// .filter(order -> TradeType.SELL.equals(order.getType()))
-	// .map(Order::getSnapshot)
-	// .filter(Objects::nonNull)
-	// .map(snapshot -> snapshot.getOrDefault(OrderSnapshotKeys.BUY_ORDER_OUT_IDS, null))
-	// .filter(Objects::nonNull)
-	// .flatMap(outIds -> JSON.parseArray(outIds, String.class).stream())
-	// .collect(Collectors.toList());
+	// 按照金额从小到大排序
+	sellTotalAmount := util.FloatDiv(sellTotalFee, currentPrice)
 
-	// // 找出可以卖的订单
-	// BigDecimal sellTotalFee = tradeFee.abs();
-	// List<Order> orderList = stockOrders.stream()
-	// .filter(order -> TradeType.BUY.equals(order.getType()))
-	// .filter(order -> !orderOutIds.contains(order.getOutId()))
-	// .filter(order -> order.getStatus().equals(TradeStatus.DONE))
-	// .filter(order -> order.getTradeFee().compareTo(BigDecimal.ZERO) > 0)
-	// .filter(order -> order.getTradeAmount().multiply(currentPrice).compareTo(sellTotalFee) <= 0)
-	// .peek(order -> {
-	// 	BigDecimal currentProfitFee = order.getTradeAmount().multiply(currentPrice)
-	// 			.subtract(order.getTradeFee())
-	// 			.subtract(order.getTradeServiceFee());
-	// 	order.setCurrentProfitFee(currentProfitFee);
-	// 	BigDecimal currentProfitRatio = currentProfitFee.divide(order.getTradeFee(), 2, RoundingMode.HALF_UP);
-	// 	order.setCurrentProfitRatio(currentProfitRatio);
-	// })
-	// .filter(order -> order.getCurrentProfitRatio().compareTo(BigDecimal.valueOf(SELL_PROFIT_RATIO)) > 0)
-	// .sorted(Comparator.comparing(Order::getTradeFee))
-	// .collect(Collectors.toList());
+	var sellOrders []StockOrder
+	var sellAmount float64 = 0
 
-	// // 按照金额从小到大排序
-	// BigDecimal sellTotalAmount = sellTotalFee.divide(currentPrice, 2, RoundingMode.HALF_UP);
-	// List<Order> sellOrders = new ArrayList<>();
-	// BigDecimal sellAmount = new BigDecimal(0);
-	// for (Order order : orderList) {
-	// BigDecimal tradeAmount = order.getTradeAmount();
-	// if (tradeAmount.compareTo(sellTotalAmount) > 0 || sellAmount.add(tradeAmount).compareTo(sellTotalAmount) > 0) {
-	// break;
-	// }
-	// sellOrders.add(order);
-	// sellAmount = sellAmount.add(tradeAmount);
-	// }
+	for _, order := range canSellOrders {
+		tradeAmount := order.TradeAmount
+		if tradeAmount > sellTotalAmount || util.FloatAdd(sellAmount, tradeAmount) > sellTotalAmount {
+			break
+		}
+		sellOrders = append(sellOrders, order)
+		sellAmount = util.FloatAdd(sellAmount, tradeAmount)
+	}
+	log.Printf("sellOrders:%v", sellOrders)
 
-	// sellAmount = BigDecimal.ZERO.subtract(sellAmount);
-	// BigDecimal sellFee = sellAmount.multiply(currentPrice);
+	sellAmount = -sellAmount
+	sellFee := util.FloatMul(sellAmount, currentPrice)
 
-	// // 手续费
-	// BigDecimal tradeServiceFee = getTradeServiceFee(sellFee, stock.getTradeCfg());
-	// return new TradeDetail(targetValue, sellFee, sellAmount, tradeServiceFee, sellOrders);
+	// 手续费
+	tradeServiceFee := util.FloatMul(-sellFee, tradeCfg.ServiceFeeRate)
+	if tradeServiceFee < tradeCfg.MinServiceFee {
+		tradeServiceFee = tradeCfg.MinServiceFee
+	}
 
-	return TradeDetail{}
+	return TradeDetail{
+		targetValue:     targetValue,
+		TradeFee:        sellFee,
+		TradeAmount:     sellAmount,
+		TradeServiceFee: tradeServiceFee,
+		SellOrders:      sellOrders,
+	}
 }
 
-func calculateIncrement(stock *Stock, tradeCfg *TradeCfg, currentPrice float64, smaStrategyConfig SmaStrategy) float64 {
+func calculateIncrement(stock *Stock, tradeCfg *TradeCfg, attributes *Attributes, currentPrice float64, smaStrategyConfig SmaStrategy) float64 {
 
 	// 默认步长
 	increment := tradeCfg.Increment
 
-	// TODO unimplemented
-
 	// 基于估值水位调整步长
-	// increment = calculateIncrementByValuationRatio(tradeCfg, increment)
+	increment = calculateIncrementByValuationRatio(stock, attributes, increment)
 
-	// // 注意：股价不是前复权时统计会有问题
-	// Date now = new Date();
+	// 注意：股价不是前复权时统计会有问题
+	now := time.Now()
 
-	// // 计算均线平均价格
-	// // 均线&价格
-	// final Map<Integer, BigDecimal> average = new HashMap<>(smaStrategyPair.getLeft().size());
-	// for (Integer averageVal : smaStrategyPair.getLeft()) {
-	//     List<StockPrice> stockPrices = priceManager.getPrices(stock, now, averageVal);
-	//     if (null == stockPrices || stockPrices.isEmpty()) {
-	//         return increment;
-	//     }
-	//     BigDecimal totalPrice = BigDecimal.ZERO;
-	//     for (StockPrice stockPrice : stockPrices) {
-	//         // 没有复权至就直接返回
-	//         if (null == stockPrice.getRehabPrice()) {
-	//             return increment;
-	//         }
-	//         totalPrice = totalPrice.add(stockPrice.getRehabPrice());
-	//     }
-	//     average.put(averageVal, totalPrice.divide(BigDecimal.valueOf(stockPrices.size()), 4, RoundingMode.HALF_UP));
-	// }
+	// 计算均线平均价格
+	// 均线&价格
+	average := make(map[uint8]float64)
 
-	// // 比较现价超过均线数量来决定浮动比例
-	// // 不用均线定比例的原因：下跌趋势过程中120均价>60均价>30均价>现价，股价突然上升，120均价>现价>60均价>30均价，这时现价低于120均线，大于60均价和30均价，使用120均线不合适。
-	// int overNum = -1;
-	// for (Integer averageVal : smaStrategyPair.getLeft()) {
-	//     BigDecimal linePrice = average.get(averageVal);
-	//     if (null != currentPrice && currentPrice.doubleValue() > linePrice.doubleValue()) {
-	//         overNum++;
-	//     }
-	// }
-	// //低于所有均线就进入下跌通道了，暂停买入。
-	// BigDecimal buyRatio = overNum == -1 ? BigDecimal.ZERO : smaStrategyPair.getRight().get(overNum);
-	// log.info("stock:{},overNum-1:{},multiplyVal:{}", stock.getCode(), overNum, buyRatio);
-	// increment = increment.multiply(buyRatio);
-	// return increment;
+	for _, v := range smaStrategyConfig.LineLevel {
+		totalPrice := 0.0
+		stockPrices := stock.ListPrice(now, int16(v))
+		for _, price := range stockPrices {
+			if price.RehabPrice <= 0 {
+				return increment
+			}
+			totalPrice = util.FloatAdd(totalPrice, price.RehabPrice)
+		}
+		average[v] = util.FloatDiv(totalPrice, float64(len(stockPrices)))
+	}
 
+	// 比较现价超过均线数量来决定浮动比例
+	// 不用均线定比例的原因：下跌趋势过程中120均价>60均价>30均价>现价，股价突然上升，120均价>现价>60均价>30均价，这时现价低于120均线，大于60均价和30均价，使用120均线不合适。
+	overNum := -1
+	for _, v := range smaStrategyConfig.LineLevel {
+		linePrice := average[v]
+		if currentPrice > linePrice {
+			overNum++
+		}
+	}
+	//低于所有均线就进入下跌通道了，暂停买入。
+	var buyRatio float64 = 0
+	if overNum > -1 {
+		buyRatio = float64(smaStrategyConfig.BuyRatio[overNum])
+	}
+	log.Printf("stock:%s,overNum-1:%v,multiplyVal:%v", stock.Code, overNum, buyRatio)
+	increment = util.FloatMul(increment, buyRatio)
+
+	return increment
+}
+
+func calculateIncrementByValuationRatio(stock *Stock, attributes *Attributes, increment float64) float64 {
+	// 跟踪的指数估值
+
+	indexValuationRatio := stock.GetIndexValuationRatio()
+
+	if indexValuationRatio > 0 {
+
+		// 冗余记录当前指数估值
+		attributes.CurrentTargetIndexValuation = fmt.Sprintf("%f", indexValuationRatio)
+
+		// 估值水位75%～100% 0倍
+		// 估值水位50%～75%  0.5倍
+		// 估值水位25%～50%  1倍
+		// 估值水位 0%～25%  1.5倍
+		if indexValuationRatio > 0.75 {
+			increment = 0
+		} else if indexValuationRatio > 0.5 {
+			increment = util.FloatMul(increment, 0.5)
+		} else if indexValuationRatio > 0.25 {
+			increment = util.FloatMul(increment, 1.0)
+		} else if indexValuationRatio >= 0.0 {
+			increment = util.FloatMul(increment, 1.5)
+		}
+
+	}
 	return increment
 }

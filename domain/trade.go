@@ -19,6 +19,9 @@ type StockOrder struct {
 	TradeServiceFee float64   `json:"trade_service_fee" gorm:"trade_service_fee"` // 交易服务费
 	TradeStatus     string    `json:"trade_status" gorm:"trade_status"`           // 0:进行中 1:结算完成
 	Snapshot        []byte    `json:"snapshot" gorm:"snapshot"`                   // 交易快照
+
+	CurrentProfitFee   float64 //当前盈亏金额
+	CurrentProfitRatio float64 //当前盈亏比例
 }
 
 // TradeDetail
