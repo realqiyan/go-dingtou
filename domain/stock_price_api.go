@@ -15,11 +15,11 @@ type PriceAPI interface {
 	GetCurrentPrice() float64
 
 	/**
-	 * 价格列表
-	 *
-	 * @param date  当前日期
-	 * @param x     交易日数量
-	 * @return 价格列表
+	* 价格列表
+	*
+	* @param date 当前日期
+	* @param x    交易日数量
+	* @return 价格列表
 	 */
 	ListPrice(date time.Time, x int16) []StockPrice
 

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"dingtou/config"
+	"dingtou/web"
 
 	"github.com/joho/godotenv"
 )
@@ -22,5 +23,8 @@ func main() {
 	dsn := os.Getenv("DB_DSN")
 	log.Printf("DB_DSN:%v", dsn)
 	config.InitDatabase(dsn)
+
+	// web server
+	web.InitWeb(9090)
 
 }

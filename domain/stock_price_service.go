@@ -84,16 +84,8 @@ func (s *Stock) GetCurrentPrice() float64 {
 	var url = "http://qt.gtimg.cn/q=%s%s"
 	var target_url = fmt.Sprintf(url, s.Market, s.Code)
 	log.Printf("%s", target_url)
-	resp, err := http.Get(target_url)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
 
-	bodyByte, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
-	}
+	bodyByte := getContent(target_url)
 	body := string(bodyByte)
 	price := strings.Split(body, "~")[3]
 
@@ -107,9 +99,9 @@ func (s *Stock) GetCurrentPrice() float64 {
 
 // GetSettlementPrice implements PriceAPI.
 func (s *Stock) GetSettlementPrice(date time.Time) float64 {
-	stockPrices := s.ListPrice(date, 1)
-	if len(stockPrices) >= 1 {
-		return stockPrices[0].Price
+	stockPriceSlice := s.ListPrice(date, 1)
+	if len(stockPriceSlice) >= 1 {
+		return stockPriceSlice[0].Price
 	}
 	return 0
 }
@@ -128,9 +120,10 @@ func (s *Stock) ListPrice(date time.Time, x int16) []StockPrice {
 	_ = json.Unmarshal(bodyByte, &stockPriceArr)
 	log.Printf("%s", stockPriceArr)
 
+	var stockPriceSlice []StockPrice
+
 	layout := "2006-01-02"
 	size := len(stockPriceArr)
-	stockPriceSlice := make([]StockPrice, size)
 	for i := size - 1; i >= 0; i-- {
 		var stockPrice StockPrice
 		stockPrice.Stock = s
@@ -138,7 +131,7 @@ func (s *Stock) ListPrice(date time.Time, x int16) []StockPrice {
 		stockPrice.Date = d
 		f, _ := strconv.ParseFloat(stockPriceArr[i].Close, 64)
 		stockPrice.Price = f
-		stockPriceSlice[i] = stockPrice
+		stockPriceSlice = append(stockPriceSlice, stockPrice)
 	}
 
 	//前复权:https://finance.sina.com.cn/realstock/company/sz000002/qfq.js

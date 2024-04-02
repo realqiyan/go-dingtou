@@ -2,6 +2,7 @@ package service
 
 import (
 	"dingtou/domain"
+	"encoding/json"
 	"log"
 )
 
@@ -28,13 +29,27 @@ func (t TradeService) Conform(owner string) ([]domain.StockOrder, error) {
 		return nil, err
 	}
 	size := len(stocks)
-	orders := make([]domain.StockOrder, size)
+	orders := make([]domain.StockOrder, 0)
 
+	// sync
 	for i := 0; i < size; i++ {
-		var stock *domain.Stock = &stocks[i]
-		order, _ := stock.Conform()
-		orders[i] = order
+		var order domain.StockOrder
+		stocks[i].Conform(&order)
+		orders = append(orders, order)
 	}
+
+	// async
+	// var wg sync.WaitGroup
+	// wg.Add(size)
+	// for i := 0; i < size; i++ {
+	// 	go func(stock *domain.Stock) {
+	// 		var order domain.StockOrder
+	// 		stock.Conform(&order)
+	// 		orders = append(orders, order)
+	// 		wg.Done()
+	// 	}(&stocks[i])
+	// }
+	// wg.Wait()
 
 	return orders, nil
 
@@ -44,5 +59,13 @@ func (t TradeService) Conform(owner string) ([]domain.StockOrder, error) {
  * 购买股票基金
  */
 func (t TradeService) Buy(order domain.StockOrder) (domain.StockOrder, error) {
-	panic("unimplemented")
+	stock := order.Stock
+
+	tradeCfgByte, _ := json.Marshal(stock.TradeCfgStruct)
+	stock.TradeCfg = string(tradeCfgByte)
+	// TODO 更新stock
+
+	// TODO 保存订单
+
+	return order, nil
 }

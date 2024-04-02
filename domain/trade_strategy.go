@@ -66,7 +66,7 @@ func CalculateConform(stock *Stock, orders []StockOrder, tradeDate time.Time) Tr
 
 	//
 	// 计算步长 - 均线策略smaStrategyConfig
-	increment := calculateIncrement(stock, &tradeCfg, attributes, currentPrice, smaStrategyConfig)
+	increment := calculateIncrement(stock, tradeCfg, attributes, currentPrice, smaStrategyConfig)
 
 	// 冗余记录步长
 	attributes.CurrentIncrement = fmt.Sprintf("%f", increment)
@@ -105,9 +105,9 @@ func CalculateConform(stock *Stock, orders []StockOrder, tradeDate time.Time) Tr
 
 	//最总交易金额（tradeFee）如果是买入则继续计算，如果是卖出，就去匹配历史交易订单。
 	if tradeFee >= 0 {
-		return buy(&tradeCfg, targetValue, tradeFee, currentPrice)
+		return buy(tradeCfg, targetValue, tradeFee, currentPrice)
 	} else {
-		return sell(&tradeCfg, orders, targetValue, tradeFee, currentPrice)
+		return sell(tradeCfg, orders, targetValue, tradeFee, currentPrice)
 	}
 
 }
@@ -241,14 +241,14 @@ func calculateIncrement(stock *Stock, tradeCfg *TradeCfg, attributes *Attributes
 
 	for _, v := range smaStrategyConfig.LineLevel {
 		totalPrice := 0.0
-		stockPrices := stock.ListPrice(now, int16(v))
-		for _, price := range stockPrices {
+		stockPriceSlice := stock.ListPrice(now, int16(v))
+		for _, price := range stockPriceSlice {
 			if price.RehabPrice <= 0 {
 				return increment
 			}
 			totalPrice = util.FloatAdd(totalPrice, price.RehabPrice)
 		}
-		average[v] = util.FloatDiv(totalPrice, float64(len(stockPrices)))
+		average[v] = util.FloatDiv(totalPrice, float64(len(stockPriceSlice)))
 	}
 
 	// 比较现价超过均线数量来决定浮动比例

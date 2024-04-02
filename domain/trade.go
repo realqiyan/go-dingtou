@@ -8,21 +8,22 @@ import (
 // StockOrder
 type StockOrder struct {
 	ID              int64     `json:"id" gorm:"id"`
-	StockId         int64     `json:"stock_id" gorm:"stock_id"`
+	StockId         int64     `json:"stockId" gorm:"stock_id"`
 	Code            string    `json:"code" gorm:"code"`
-	CreateTime      time.Time `json:"create_time" gorm:"create_time"`
+	CreateTime      time.Time `json:"createTime" gorm:"create_time"`
 	Type            string    `json:"type" gorm:"type"` // buy:买 sell:卖 bc:补偿
-	OutId           string    `json:"out_id" gorm:"out_id"`
-	TradeTime       time.Time `json:"trade_time" gorm:"trade_time"`               // 交易日期
-	TradeFee        float64   `json:"trade_fee" gorm:"trade_fee"`                 // 交易金额
-	TradeAmount     float64   `json:"trade_amount" gorm:"trade_amount"`           // 交易数量
-	TradeServiceFee float64   `json:"trade_service_fee" gorm:"trade_service_fee"` // 交易服务费
-	TradeStatus     string    `json:"trade_status" gorm:"trade_status"`           // 0:进行中 1:结算完成
-	Snapshot        []byte    `json:"snapshot" gorm:"snapshot"`                   // 交易快照
+	OutId           string    `json:"outId" gorm:"out_id"`
+	TradeTime       time.Time `json:"tradeTime" gorm:"trade_time"`              // 交易日期
+	TradeFee        float64   `json:"tradeFee" gorm:"trade_fee"`                // 交易金额
+	TradeAmount     float64   `json:"tradeAmount" gorm:"trade_amount"`          // 交易数量
+	TradeServiceFee float64   `json:"tradeServiceFee" gorm:"trade_service_fee"` // 交易服务费
+	TradeStatus     string    `json:"tradeStatus" gorm:"trade_status"`          // 0:进行中 1:结算完成
+	Snapshot        string    `json:"snapshot" gorm:"snapshot"`                 // 交易快照
 
-	CurrentProfitFee   float64      `json:"current_profit_fee" gorm:"-"`   //当前盈亏金额
-	CurrentProfitRatio float64      `json:"current_profit_ratio" gorm:"-"` //当前盈亏比例
-	Dependencies       []StockOrder `json:"dependencies" gorm:"-"`         //依赖的订单
+	Stock              *Stock       `json:"stock" gorm:"-"`              //Stock
+	CurrentProfitFee   float64      `json:"currentProfitFee" gorm:"-"`   //当前盈亏金额
+	CurrentProfitRatio float64      `json:"currentProfitRatio" gorm:"-"` //当前盈亏比例
+	Dependencies       []StockOrder `json:"dependencies" gorm:"-"`       //依赖的订单
 }
 
 // TradeDetail
@@ -64,7 +65,7 @@ func (o *StockOrder) GetSnapshot() OrderSnapshot {
 	}
 
 	var snapshotMap map[string]string = make(map[string]string)
-	err := json.Unmarshal(o.Snapshot, &snapshotMap)
+	err := json.Unmarshal([]byte(o.Snapshot), &snapshotMap)
 	if err != nil {
 		panic(err)
 	}
