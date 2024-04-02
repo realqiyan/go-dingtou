@@ -124,7 +124,22 @@ func (s *Stock) Conform() (StockOrder, error) {
 	order.Type = tradeType
 	order.OutId = buildOutId(tradeType, now, s)
 
-	//TODO 快照
+	order.Dependencies = tradeDetail.SellOrders
+
+	// 交易快照
+	snapshot := make(map[string]string)
+	tradeCfgByte, _ := json.Marshal(s.TradeCfg)
+	snapshot["tradeCfg"] = string(tradeCfgByte)
+
+	var outIds []string
+	for _, order := range tradeDetail.SellOrders {
+		outIds = append(outIds, order.OutId)
+	}
+	buyOrderOutIdsByte, _ := json.Marshal(outIds)
+	snapshot["buyOrderOutIds"] = string(buyOrderOutIdsByte)
+
+	snapshotByte, _ := json.Marshal(snapshot)
+	order.Snapshot = snapshotByte
 
 	return order, nil
 }

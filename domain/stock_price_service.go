@@ -207,7 +207,21 @@ func calcRehabPrice(stockPrice *StockPrice, stockAdjustItemSlice stockAdjustItem
 
 func getContent(url string) []byte {
 	log.Printf("%s", url)
-	resp, err := http.Get(url)
+
+	req, _ := http.NewRequest("GET", "https://forward.myworker.win/"+url, nil)
+	req.Header.Add("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+	req.Header.Add("accept-language", "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6")
+	req.Header.Add("cache-control", "max-age=0")
+	req.Header.Add("sec-ch-ua", "\"Microsoft Edge\";v=\"123\", \"Not:A-Brand\";v=\"8\", \"Chromium\";v=\"123\"")
+	req.Header.Add("sec-ch-ua-mobile", "?0")
+	req.Header.Add("sec-ch-ua-platform", "\"Windows\"")
+	req.Header.Add("sec-fetch-dest", "document")
+	req.Header.Add("sec-fetch-mode", "navigate")
+	req.Header.Add("sec-fetch-site", "none")
+	req.Header.Add("sec-fetch-user", "?1")
+	req.Header.Add("upgrade-insecure-requests", "1")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		panic(err)
 	}
