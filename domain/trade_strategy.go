@@ -4,6 +4,7 @@ import (
 	"dingtou/util"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -184,11 +185,15 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 	}
 	//log.Printf("canSellOrders:%v", canSellOrders)
 
-	// 按照金额从小到大排序
 	sellTotalAmount := util.FloatDiv(sellTotalFee, currentPrice)
 
 	var sellOrders []StockOrder
 	var sellAmount float64 = 0
+
+	// 按照金额从小到大排序
+	sort.Slice(canSellOrders, func(i, j int) bool {
+		return canSellOrders[i].TradeFee < canSellOrders[j].TradeFee
+	})
 
 	for _, order := range canSellOrders {
 		tradeAmount := order.TradeAmount
@@ -198,6 +203,7 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 		sellOrders = append(sellOrders, order)
 		sellAmount = util.FloatAdd(sellAmount, tradeAmount)
 	}
+
 	log.Printf("sellOrders:%v", sellOrders)
 
 	sellAmount = -sellAmount

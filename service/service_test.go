@@ -4,6 +4,7 @@ import (
 	"dingtou/config"
 	"dingtou/domain"
 	"os"
+	"sort"
 	"testing"
 	"time"
 
@@ -71,4 +72,32 @@ func TestTradeService_Conform(t *testing.T) {
 	} else {
 		t.Errorf("StockService.Query() error = %v", err)
 	}
+
+}
+
+func TestTradeService_SortOrders(t *testing.T) {
+	setup(t)
+
+	// 测试
+	var stockService StockService
+	stocks, err := stockService.Query("weibo_2685310785")
+
+	// var stocks []domain.Stock
+	// stocks, err = domain.GetOwnerStocks("weibo_2685310785")
+	if err == nil {
+
+		for _, stock := range stocks {
+
+			orders, _ := stock.GetStockOrders()
+			sort.Slice(orders, func(i, j int) bool {
+				return orders[i].TradeFee < orders[j].TradeFee
+			})
+			return
+
+		}
+
+	} else {
+		t.Errorf("TestTradeService_SortOrders() error = %v", err)
+	}
+
 }

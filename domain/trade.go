@@ -20,8 +20,9 @@ type StockOrder struct {
 	TradeStatus     string    `json:"trade_status" gorm:"trade_status"`           // 0:进行中 1:结算完成
 	Snapshot        []byte    `json:"snapshot" gorm:"snapshot"`                   // 交易快照
 
-	CurrentProfitFee   float64 //当前盈亏金额
-	CurrentProfitRatio float64 //当前盈亏比例
+	CurrentProfitFee   float64      `json:"current_profit_fee" gorm:"-"`   //当前盈亏金额
+	CurrentProfitRatio float64      `json:"current_profit_ratio" gorm:"-"` //当前盈亏比例
+	Dependencies       []StockOrder `json:"dependencies" gorm:"-"`         //依赖的订单
 }
 
 // TradeDetail
