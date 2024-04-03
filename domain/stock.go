@@ -31,7 +31,7 @@ type Attributes struct {
 
 // Stock
 type Stock struct {
-	ID            int64     `json:"id" gorm:"id"`
+	ID            uint64    `json:"id,string" gorm:"id"`
 	Code          string    `json:"code" gorm:"code"`          // 股票基金编码
 	Type          string    `json:"type" gorm:"type"`          // 股票/基金
 	Market        string    `json:"market" gorm:"market"`      // 市场：沪、深、港、美、基
@@ -72,6 +72,32 @@ type StockPrice struct {
 	RehabPrice float64
 }
 
+// GetOwnerStocks 获取owner的证券
+func GetOwnerStocks(owner string) ([]Stock, error) {
+	var stocks []Stock
+	result := config.DB.Where("owner = ?", owner).Find(&stocks)
+	return stocks, result.Error
+}
+
+// 获取所以订单 （周定投一年52条记录，直接取全部订单）
+func (s *Stock) GetStockOrders() ([]StockOrder, error) {
+	var orders []StockOrder
+	result := config.DB.Where("stock_id = ?", s.ID).Find(&orders)
+	return orders, result.Error
+}
+
+// 创建Stock
+func (s *Stock) Create() error {
+	result := config.DB.Create(s)
+	return result.Error
+}
+
+// 更新Stock
+func (s *Stock) Update() error {
+	result := config.DB.Save(s)
+	return result.Error
+}
+
 // TableName 表名称
 func (*Stock) TableName() string {
 	return "stock"
@@ -89,20 +115,6 @@ func (s *Stock) GetTradeCfg() *TradeCfg {
 	}
 	s.TradeCfgStruct = &tradeCfg
 	return s.TradeCfgStruct
-}
-
-// GetOwnerStocks 获取owner的证券
-func GetOwnerStocks(owner string) ([]Stock, error) {
-	var stocks []Stock
-	result := config.DB.Where("owner = ?", owner).Find(&stocks)
-	return stocks, result.Error
-}
-
-// 获取所以订单 （周定投一年52条记录，直接取全部订单）
-func (s *Stock) GetStockOrders() ([]StockOrder, error) {
-	var orders []StockOrder
-	result := config.DB.Where("stock_id = ?", s.ID).Find(&orders)
-	return orders, result.Error
 }
 
 // 生成订单
@@ -135,7 +147,7 @@ func (s *Stock) Conform(order *StockOrder) error {
 
 	// 交易快照
 	snapshot := make(map[string]string)
-	tradeCfgByte, _ := json.Marshal(s.TradeCfg)
+	tradeCfgByte, _ := json.Marshal(s.TradeCfgStruct)
 	snapshot["tradeCfg"] = string(tradeCfgByte)
 
 	var outIds []string

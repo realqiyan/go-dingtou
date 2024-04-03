@@ -1,14 +1,15 @@
 package domain
 
 import (
+	"dingtou/config"
 	"encoding/json"
 	"time"
 )
 
 // StockOrder
 type StockOrder struct {
-	ID              int64     `json:"id" gorm:"id"`
-	StockId         int64     `json:"stockId" gorm:"stock_id"`
+	ID              uint64    `json:"id,string" gorm:"id"`
+	StockId         uint64    `json:"stockId,string" gorm:"stock_id"`
 	Code            string    `json:"code" gorm:"code"`
 	CreateTime      time.Time `json:"createTime" gorm:"create_time"`
 	Type            string    `json:"type" gorm:"type"` // buy:买 sell:卖 bc:补偿
@@ -57,6 +58,23 @@ type OrderSnapshot struct {
 	BuyOrderOutIds []string `json:"buyOrderOutIds"` //卖出依赖的订单
 }
 
+// 新增 StockOrder
+func (s *StockOrder) Create() error {
+	result := config.DB.Create(s)
+	return result.Error
+}
+
+// 更新 StockOrder
+func (s *StockOrder) Update() error {
+	result := config.DB.Save(s)
+	return result.Error
+}
+
+// TableName 表名称
+func (*StockOrder) TableName() string {
+	return "stock_order"
+}
+
 // 获取订单快照
 func (o *StockOrder) GetSnapshot() OrderSnapshot {
 	var orderSnapshot OrderSnapshot
@@ -93,9 +111,4 @@ func (o *StockOrder) GetSnapshot() OrderSnapshot {
 	}
 
 	return orderSnapshot
-}
-
-// TableName 表名称
-func (*StockOrder) TableName() string {
-	return "stock_order"
 }

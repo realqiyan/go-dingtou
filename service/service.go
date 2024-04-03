@@ -4,6 +4,8 @@ import (
 	"dingtou/domain"
 	"encoding/json"
 	"log"
+	"sync"
+	"time"
 )
 
 type StockService struct {
@@ -31,25 +33,18 @@ func (t TradeService) Conform(owner string) ([]domain.StockOrder, error) {
 	size := len(stocks)
 	orders := make([]domain.StockOrder, 0)
 
-	// sync
-	for i := 0; i < size; i++ {
-		var order domain.StockOrder
-		stocks[i].Conform(&order)
-		orders = append(orders, order)
-	}
-
 	// async
-	// var wg sync.WaitGroup
-	// wg.Add(size)
-	// for i := 0; i < size; i++ {
-	// 	go func(stock *domain.Stock) {
-	// 		var order domain.StockOrder
-	// 		stock.Conform(&order)
-	// 		orders = append(orders, order)
-	// 		wg.Done()
-	// 	}(&stocks[i])
-	// }
-	// wg.Wait()
+	var wg sync.WaitGroup
+	wg.Add(size)
+	for i := 0; i < size; i++ {
+		go func(stock *domain.Stock) {
+			var order domain.StockOrder
+			stock.Conform(&order)
+			orders = append(orders, order)
+			wg.Done()
+		}(&stocks[i])
+	}
+	wg.Wait()
 
 	return orders, nil
 
@@ -63,9 +58,14 @@ func (t TradeService) Buy(order domain.StockOrder) (domain.StockOrder, error) {
 
 	tradeCfgByte, _ := json.Marshal(stock.TradeCfgStruct)
 	stock.TradeCfg = string(tradeCfgByte)
-	// TODO 更新stock
 
-	// TODO 保存订单
+	// 创建订单
+	err := order.Create()
+	if err == nil {
+		// 更新stock
+		stock.LastTradeTime = time.Now()
+		err = stock.Update()
+	}
 
-	return order, nil
+	return order, err
 }
