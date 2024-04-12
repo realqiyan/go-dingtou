@@ -4,6 +4,7 @@ import (
 	"dingtou/domain"
 	"encoding/json"
 	"log"
+	"sort"
 	"sync"
 	"time"
 )
@@ -41,6 +42,43 @@ func (t TradeService) Conform(owner string) ([]domain.StockOrder, error) {
 			var order domain.StockOrder
 			stock.Conform(&order)
 			orders = append(orders, order)
+			wg.Done()
+		}(&stocks[i])
+	}
+	wg.Wait()
+
+	// 按照StockId从小到大排序
+	sort.Slice(orders, func(i, j int) bool {
+		return orders[i].StockId < orders[j].StockId
+	})
+
+	return orders, nil
+
+}
+
+/**
+ * 结算股票基金
+ */
+func (t TradeService) Settlement(owner string) ([]domain.StockOrder, error) {
+	stocks, err := domain.GetOwnerStocks(owner)
+	if err != nil {
+		log.Printf("GetOwnerStocks(%s) error:%v", owner, err)
+		return nil, err
+	}
+	size := len(stocks)
+	orders := make([]domain.StockOrder, 0)
+	// async
+	var wg sync.WaitGroup
+	wg.Add(size)
+	for i := 0; i < size; i++ {
+		go func(stock *domain.Stock) {
+			waitProcessOrders, _ := stock.GetStockWaitProcessOrders()
+			for _, order := range waitProcessOrders {
+				stock.Settlement(&order)
+				order.Update()
+				orders = append(orders, order)
+			}
+			stock.Update()
 			wg.Done()
 		}(&stocks[i])
 	}

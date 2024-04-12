@@ -36,6 +36,7 @@ func InitWeb(port int) {
 
 func tradeConform(c *gin.Context) {
 	owner := os.Getenv("DEFAULT_OWNER")
+	tradeService.Settlement(owner)
 	orders, err := tradeService.Conform(owner)
 	if err != nil {
 		c.JSON(500, err.Error())
