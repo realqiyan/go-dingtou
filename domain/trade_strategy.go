@@ -112,6 +112,36 @@ func CalculateConform(stock *Stock, orders []StockOrder, tradeDate time.Time) Tr
 
 }
 
+/**
+ * CalculateSettlement
+ */
+func CalculateSettlement(order *StockOrder) (TradeDetail, error) {
+	var tradeDetail TradeDetail
+	tradeFee := order.TradeFee
+	tradeServiceFee := order.TradeServiceFee
+	tradeAmount := order.TradeAmount
+
+	if order.Stock.Type == "fund" {
+		settlementPrice := order.Stock.GetSettlementPrice(order.TradeTime)
+		if settlementPrice <= 0 {
+			return tradeDetail, fmt.Errorf("%s settlementPrice is nil", order.Code)
+		}
+		var realTradeFee float64
+		if order.Type == util.BUY {
+			realTradeFee = util.FloatSub(tradeFee, tradeServiceFee)
+		} else if order.Type == util.SELL {
+			realTradeFee = tradeFee
+		}
+		tradeAmount = util.FloatDiv(realTradeFee, settlementPrice)
+	}
+
+	tradeDetail.TradeFee = tradeFee
+	tradeDetail.TradeAmount = tradeAmount
+	tradeDetail.TradeServiceFee = tradeServiceFee
+
+	return tradeDetail, nil
+}
+
 func buy(tradeCfg *TradeCfg, targetValue, tradeFee, currentPrice float64) TradeDetail {
 	// 计算交易份额
 	tradeAmount := util.FloatDiv(tradeFee, currentPrice)
@@ -157,7 +187,7 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 
 	// 需要过滤已经卖出的订单
 	for _, order := range orders {
-		if order.Type == "sell" {
+		if order.Type == util.SELL {
 			selledOrderOutIds = append(selledOrderOutIds, order.GetSnapshot().BuyOrderOutIds...)
 		}
 	}
@@ -167,7 +197,7 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 	sellTotalFee := util.FloatAbs(tradeFee)
 	for _, order := range orders {
 		orderCurrentPrice := util.FloatMul(order.TradeAmount, currentPrice)
-		if order.Type == "buy" && !contains(selledOrderOutIds, order.OutId) && order.TradeStatus == "done" && order.TradeFee > 0 && orderCurrentPrice < sellTotalFee {
+		if order.Type == util.BUY && !contains(selledOrderOutIds, order.OutId) && order.TradeStatus == "done" && order.TradeFee > 0 && orderCurrentPrice < sellTotalFee {
 			// 当前盈利
 			currentProfitFee := util.FloatSub(orderCurrentPrice, order.TradeFee)
 			currentProfitFee = util.FloatSub(currentProfitFee, order.TradeServiceFee)

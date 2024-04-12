@@ -2,6 +2,7 @@ package domain
 
 import (
 	"dingtou/config"
+	"dingtou/util"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -86,6 +87,13 @@ func (s *Stock) GetStockOrders() ([]StockOrder, error) {
 	return orders, result.Error
 }
 
+// 获取待处理订单
+func (s *Stock) GetStockWaitProcessOrders() ([]StockOrder, error) {
+	var orders []StockOrder
+	result := config.DB.Where("stock_id = ? and trade_status = ?", s.ID, util.PROCESSING).Find(&orders)
+	return orders, result.Error
+}
+
 // 创建Stock
 func (s *Stock) Create() error {
 	result := config.DB.Create(s)
@@ -123,7 +131,8 @@ func (s *Stock) Conform(order *StockOrder) error {
 	order.Stock = s
 	order.Code = s.Code
 	order.StockId = s.ID
-	order.TradeStatus = "processing"
+	order.TradeStatus = util.PROCESSING
+	s.TradeStatus = util.PROCESSING
 	order.CreateTime = now
 
 	historyOrders, _ := s.GetStockOrders()
@@ -136,9 +145,9 @@ func (s *Stock) Conform(order *StockOrder) error {
 
 	var tradeType string
 	if tradeDetail.TradeFee >= 0 {
-		tradeType = "buy"
+		tradeType = util.BUY
 	} else {
-		tradeType = "sell"
+		tradeType = util.SELL
 	}
 	order.Type = tradeType
 	order.OutId = buildOutId(tradeType, now, s)
@@ -160,6 +169,25 @@ func (s *Stock) Conform(order *StockOrder) error {
 	snapshotByte, _ := json.Marshal(snapshot)
 	order.Snapshot = string(snapshotByte)
 
+	return nil
+}
+
+// 结算订单
+func (s *Stock) Settlement(order *StockOrder) error {
+	order.Stock = s
+	tradeDetail, _ := CalculateSettlement(order)
+	order.TradeFee = tradeDetail.TradeFee
+	order.TradeAmount = tradeDetail.TradeAmount
+	order.TradeServiceFee = tradeDetail.TradeServiceFee
+
+	amount := util.FloatAdd(s.Amount, order.TradeAmount)
+	totalTradeFee := util.FloatAdd(s.TotalFee, order.TradeFee)
+
+	s.Amount = amount
+	s.TotalFee = totalTradeFee
+	order.TradeStatus = util.DONE
+	s.TradeStatus = util.DONE
+	s.LastTradeTime = order.TradeTime
 	return nil
 }
 
