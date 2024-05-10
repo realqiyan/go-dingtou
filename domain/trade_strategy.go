@@ -23,7 +23,7 @@ type SmaStrategy struct {
 var smaStrategyConfig SmaStrategy = SmaStrategy{
 	LineSize:  4,
 	LineLevel: []uint8{10, 30, 60, 120},
-	BuyRatio:  []float32{1.5, 1.25, 1, 0},
+	BuyRatio:  []float32{1.5, 1.25, 1, 1},
 }
 
 /**
