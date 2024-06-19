@@ -216,6 +216,7 @@ func getContent(url string) []byte {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Printf("GET url error:%s", url)
 		panic(err)
 	}
 	defer resp.Body.Close()
