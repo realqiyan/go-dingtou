@@ -254,6 +254,16 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 	}
 }
 
+func maxInSlice(nums []uint8) uint8 {
+	max := nums[0]
+	for _, value := range nums {
+		if value > max {
+			max = value
+		}
+	}
+	return max
+}
+
 func calculateIncrement(stock *Stock, tradeCfg *TradeCfg, attributes *Attributes, currentPrice float64, smaStrategyConfig SmaStrategy) float64 {
 
 	// 默认步长
@@ -269,9 +279,15 @@ func calculateIncrement(stock *Stock, tradeCfg *TradeCfg, attributes *Attributes
 	// 均线&价格
 	average := make(map[uint8]float64)
 
+	// 通过获取最大的日期间隔
+	maxDay := maxInSlice(smaStrategyConfig.LineLevel)
+	maxStockPriceSlice := stock.ListPrice(now, int16(maxDay))
+	// log.Printf("maxStockPriceSlice:%v", maxStockPriceSlice)
+
 	for _, v := range smaStrategyConfig.LineLevel {
 		totalPrice := 0.0
-		stockPriceSlice := stock.ListPrice(now, int16(v))
+		// stockPriceSlice := stock.ListPrice(now, int16(v))
+		stockPriceSlice := maxStockPriceSlice[:v]
 		for _, price := range stockPriceSlice {
 			if price.RehabPrice <= 0 {
 				return increment
