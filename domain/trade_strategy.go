@@ -27,6 +27,11 @@ var smaStrategyConfig SmaStrategy = SmaStrategy{
 }
 
 /**
+ * 卖出时，当前价格涨幅少于比例不卖出 15%
+ */
+const sellProfitRatio = 0.15
+
+/**
  * 价值平均定投策略增强版（增加上浮比例）
  *
  * 当前持有价值=当前基金持有份额*当前基金价格
@@ -206,7 +211,7 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 			currentProfitRatio := util.FloatDiv(currentProfitFee, order.TradeFee)
 
 			// 大于5%才卖
-			if currentProfitRatio >= 0.05 {
+			if currentProfitRatio >= sellProfitRatio {
 				order.CurrentProfitFee = currentProfitFee
 				order.CurrentProfitRatio = currentProfitRatio
 				canSellOrders = append(canSellOrders, order)
