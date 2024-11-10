@@ -29,7 +29,7 @@ var smaStrategyConfig SmaStrategy = SmaStrategy{
 /**
  * 卖出时，当前价格涨幅少于比例不卖出 15%
  */
-const sellProfitRatio = 0.15
+const sellProfitRatioDefaultVal = "0.15"
 
 /**
  * 价值平均定投策略增强版（增加上浮比例）
@@ -108,11 +108,17 @@ func CalculateConform(stock *Stock, orders []StockOrder, tradeDate time.Time) Tr
 		}
 	}
 
+	// sellProfitRatio卖出的盈利比例
+	if attributes.SellProfitRatio == "" {
+		attributes.SellProfitRatio = sellProfitRatioDefaultVal
+	}
+	sellProfitRatio, _ := strconv.ParseFloat(attributes.SellProfitRatio, 64)
+
 	//最总交易金额（tradeFee）如果是买入则继续计算，如果是卖出，就去匹配历史交易订单。
 	if tradeFee >= 0 {
 		return buy(tradeCfg, targetValue, tradeFee, currentPrice)
 	} else {
-		return sell(tradeCfg, orders, targetValue, tradeFee, currentPrice)
+		return sell(tradeCfg, orders, targetValue, tradeFee, currentPrice, sellProfitRatio)
 	}
 
 }
@@ -185,7 +191,7 @@ func contains(s []string, str string) bool {
 	return false
 }
 
-func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, currentPrice float64) TradeDetail {
+func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, currentPrice float64, sellProfitRatio float64) TradeDetail {
 
 	var selledOrderOutIds []string //已经卖出的订单outId
 	var canSellOrders []StockOrder //可以卖出的订单
@@ -210,7 +216,7 @@ func sell(tradeCfg *TradeCfg, orders []StockOrder, targetValue, tradeFee, curren
 			// 当前盈利比例
 			currentProfitRatio := util.FloatDiv(currentProfitFee, order.TradeFee)
 
-			// 大于5%才卖
+			// 大于sellProfitRatio才卖
 			if currentProfitRatio >= sellProfitRatio {
 				order.CurrentProfitFee = currentProfitFee
 				order.CurrentProfitRatio = currentProfitRatio

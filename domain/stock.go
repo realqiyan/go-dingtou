@@ -20,6 +20,7 @@ type TradeCfg struct {
 
 // 交易属性
 type Attributes struct {
+	SellProfitRatio             string `json:"sellProfitRatio"`
 	PerMaxTradePrice            string `json:"perMaxTradePrice"`
 	CurrentTargetValue          string `json:"currentTargetValue"`
 	PreTargetValue              string `json:"preTargetValue"`
